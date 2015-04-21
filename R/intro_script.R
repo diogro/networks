@@ -3,6 +3,7 @@ library(gdata)
 library(readr)
 library(plyr)
 library(dplyr)
+library(ggplot2)
 
 folder <- '~/Dropbox/Cursos/Network tools 2015/2015 Course Materials/Hands on Computers/'
 load('~/Dropbox/Cursos/Network tools 2015/2015 Course Materials/Hands on Computers/Praxis_workspace.RData')
@@ -28,17 +29,17 @@ homo.cor <- cov2cor(ED$Homo_sapiens$ed.vcv)
 calcTreshDensity <- function (tresh) {
   new.cor <- homo.cor
   diag(new.cor) <- 0
-  new.cor[new.cor < tresh] <- 0
+  new.cor[abs(new.cor) < tresh] <- 0
   g = graph.adjacency(new.cor, weighted = TRUE, mode = 'undirected')
   return(list(density = graph.density(g), graph = g))
 }
-treshs <- seq(min(homo.cor), max(homo.cor), by = 0.01)
+treshs <- seq(0, max(homo.cor), by = 0.01)
 denst <- aaply(treshs, 1, function(x) calcTreshDensity(x)[[1]])
-data.frame(treshs, denst)
-plot(treshs, denst)
-g = calcTreshDensity(0.3)[[2]]
+ggplot(data.frame(tresh = treshs, denst = denst), aes(tresh, denst)) + geom_line()
+g = calcTreshDensity(0.5)[[2]]
 
 g = graph.adjacency(homo.cor, weighted = TRUE, mode = 'undirected')
+g <- delete.vertices(g, which(degree(g) == 0))
 V(g)$color <- fastgreedy.community(g)$membership
 g$layout <- layout.circle(g)
 labels <- radian.rescale(39)
@@ -86,3 +87,41 @@ graph.density(homoU)
 
 shortest.paths(homoD)
 diameter(homoD)
+
+# Calculate C and L
+C <- transitivity(homoU, type="average")
+L <- average.path.length(homoU)
+# Randomize your network
+homoU_degree <- degree(homoU) # same P(K)
+RhomoU <- degree.sequence.game(homoU_degree, in.deg=NULL, method="vl")
+# Calculate C and L
+CR <- transitivity(RhomoU, type="average")
+LR <- average.path.length(RhomoU)
+# Compare yours with random
+(C/CR)/(L/LR) >= 0.012*vcount(homoU)^1.11
+
+is.hierarchy(homoU)
+
+par(mfrow = c(3,3), mar = c(1, 1, 1, 1))
+for(k in 1:9) plot(k.regular.game(10, k, directed = FALSE), vertex.size = 10)
+
+plot(degree.distribution(erdos.renyi.game(10, 0.9), cumulative = T))
+graph.density(homoU)
+hist(replicate(1000, ecount(erdos.renyi.game(21, graph.density(homoU)))))
+
+par(mfrow = c(2,3), mar = c(1, 1, 1, 1))
+for(k in c(0, 0.005, 0.01, 0.1, 0.5, 1)) {
+  plot(x <- watts.strogatz.game(1, 20, 1, k), vertex.size = 10)
+  is.smallworld(x)
+}
+
+BA <- barabasi.game(500, m=1, directed=FALSE)
+plot(BA, vertex.size=1, vertex.label=NA)
+
+par(mfrow = c(3,3), mar = c(1, 1, 1, 1))
+for(r in seq(0.1, 0.5, len = 9)){
+  PG <- grg.game(20, r, coords = TRUE)
+  V(PG)$color <- fastgreedy.community(PG)$membership
+  # plot function uses coords if TRUE
+  plot(PG, vertex.size=10, vertex.label=NA)
+}

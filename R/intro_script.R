@@ -22,30 +22,6 @@ graph$layout <- layout.circle(graph)
 plot(graph, vertex.label.dist=1)
 
 
-load('~/Dropbox/labbio/cov_bayes_data/Rdatas/ED.RData')
-homo.cor <- cov2cor(ED$Homo_sapiens$ed.vcv)
-
-
-calcTreshDensity <- function (tresh) {
-  new.cor <- homo.cor
-  diag(new.cor) <- 0
-  new.cor[abs(new.cor) < tresh] <- 0
-  g = graph.adjacency(new.cor, weighted = TRUE, mode = 'undirected')
-  return(list(density = graph.density(g), graph = g))
-}
-treshs <- seq(0, max(homo.cor), by = 0.01)
-denst <- aaply(treshs, 1, function(x) calcTreshDensity(x)[[1]])
-ggplot(data.frame(tresh = treshs, denst = denst), aes(tresh, denst)) + geom_line()
-g = calcTreshDensity(0.5)[[2]]
-
-g = graph.adjacency(homo.cor, weighted = TRUE, mode = 'undirected')
-g <- delete.vertices(g, which(degree(g) == 0))
-V(g)$color <- fastgreedy.community(g)$membership
-g$layout <- layout.circle(g)
-labels <- radian.rescale(39)
-plot(g, edge.width=E(g)$weight,
-     vertex.size = 10)
-
 actors = read.csv(paste0(folder, 'faculty.csv'), row.names = 1)
 relations = read.csv(paste0(folder, 'relations.csv'), row.names = 1)
 
@@ -118,10 +94,14 @@ for(k in c(0, 0.005, 0.01, 0.1, 0.5, 1)) {
 BA <- barabasi.game(500, m=1, directed=FALSE)
 plot(BA, vertex.size=1, vertex.label=NA)
 
-par(mfrow = c(3,3), mar = c(1, 1, 1, 1))
+par(mfrow = c(3,3), mar = c(0, 0, 0, 0))
 for(r in seq(0.1, 0.5, len = 9)){
   PG <- grg.game(20, r, coords = TRUE)
-  V(PG)$color <- fastgreedy.community(PG)$membership
+  comm <- fastgreedy.community(PG)
+  V(PG)$color <- comm$membership
   # plot function uses coords if TRUE
-  plot(PG, vertex.size=10, vertex.label=NA)
+  plot(comm, PG, vertex.size=10, vertex.label=NA)
 }
+
+x= fastgreedy.community(PG)
+plot.communities(x, PG)
